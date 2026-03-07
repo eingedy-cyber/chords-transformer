@@ -116,9 +116,22 @@ function parseTab4uTable($, rows) {
       }
 
     } else {
-      // chords_en not preceded by a song row → chord-only line
-      const line = row.chords.map(c => ({ chord: c.chord, lyric: '' }));
-      if (line.length > 0) lines.push(line);
+      // chords_en not directly after a song row.
+      // Try pairing with the following song row (Hebrew-like ordering within English songs)
+      const next = i + 1 < rowData.length ? rowData[i + 1] : null;
+      if (next && next.type === 'song' && !isSectionLabelText(next.text)) {
+        if (!originalKey && row.chords.length > 0) {
+          const m = row.chords[0].chord.match(/^([A-G][b#]?m?)/);
+          if (m) originalKey = m[1];
+        }
+        const line = buildChordLyricLine(row.chords, next.text);
+        if (line.length > 0) lines.push(line);
+        i++; // consume the song row
+      } else {
+        // Truly chord-only line (intro, interlude, etc.)
+        const line = row.chords.map(c => ({ chord: c.chord, lyric: '' }));
+        if (line.length > 0) lines.push(line);
+      }
     }
   }
 
