@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chords Transformer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.4rem;
+      color: #1a1a1a;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: #333;
+      font-size: 0.9rem;
+    }
+
+    .field {
+      margin-bottom: 1.2rem;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1.5px solid #ddd;
+      border-radius: 7px;
+      font-size: 1rem;
+      transition: border-color 0.15s;
+      background: white;
+    }
+
+    input[type="text"]:focus, select:focus {
+      outline: none;
+      border-color: #1a6fa8;
+      box-shadow: 0 0 0 3px rgba(26,111,168,0.12);
+    }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+      margin-bottom: 1.2rem;
+    }
+
+    .row .field {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background: #1a6fa8;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #155d8e; }
+    button:active { background: #104c75; }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 1rem;
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .status.loading {
+      display: block;
+      background: #e8f4fd;
+      color: #1a6fa8;
+      border: 1px solid #b3d7f0;
+    }
+
+    .status.error {
+      display: block;
+      background: #fff3f3;
+      color: #c0392b;
+      border: 1px solid #f5a5a5;
+    }
+
+    .share-link {
+      margin-top: 1rem;
+      padding: 0.7rem 1rem;
+      background: #f0faf0;
+      border: 1px solid #b3e0b3;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: none;
+      word-break: break-all;
+    }
+
+    .share-link a { color: #1a6fa8; }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Chords Transformer</h1>
+    <p class="subtitle">Transpose any tab4u.com song to your preferred key</p>
+
+    <form id="form">
+      <div class="field">
+        <label for="url">tab4u.com Song URL</label>
+        <input
+          type="text"
+          id="url"
+          name="url"
+          placeholder="https://www.tab4u.com/..."
+          autocomplete="off"
+          required
+        >
+        <p class="hint">Paste a full song URL from tab4u.com</p>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="key">Target Key</label>
+          <select id="key" name="targetKey">
+            <option>C</option>
+            <option>C#</option>
+            <option>Db</option>
+            <option>D</option>
+            <option>D#</option>
+            <option>Eb</option>
+            <option>E</option>
+            <option>F</option>
+            <option>F#</option>
+            <option>Gb</option>
+            <option>G</option>
+            <option>G#</option>
+            <option>Ab</option>
+            <option>A</option>
+            <option>A#</option>
+            <option>Bb</option>
+            <option>B</option>
+            <option>Am</option>
+            <option>Bm</option>
+            <option>Cm</option>
+            <option>Dm</option>
+            <option>Em</option>
+            <option>Fm</option>
+            <option>Gm</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" id="btn">Transpose</button>
+    </form>
+
+    <div class="status" id="status"></div>
+    <div class="share-link" id="shareLink"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('form');
+    const btn = document.getElementById('btn');
+    const statusEl = document.getElementById('status');
+    const shareLinkEl = document.getElementById('shareLink');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const url = document.getElementById('url').value.trim();
+      const targetKey = document.getElementById('key').value;
+
+      if (!url) return;
+
+      btn.disabled = true;
+      statusEl.className = 'status loading';
+      statusEl.textContent = 'Fetching and transposing...';
+      shareLinkEl.style.display = 'none';
+
+      try {
+        const response = await fetch('/transpose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, targetKey })
+        });
+
+        const html = await response.text();
+
+        if (!response.ok) {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'Error: ' + (extractError(html) || response.statusText);
+          return;
+        }
+
+        statusEl.style.display = 'none';
+
+        // Open in new tab
+        const blob = new Blob([html], { type: 'text/html' });
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+
+        // Show shareable link
+        const shareUrl = `/song?url=${encodeURIComponent(url)}&key=${encodeURIComponent(targetKey)}`;
+        shareLinkEl.style.display = 'block';
+        shareLinkEl.innerHTML = `Shareable link: <a href="${shareUrl}" target="_blank">${location.origin}${shareUrl}</a>`;
+
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Network error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function extractError(html) {
+      const match = html.match(/<p>(.*?)<\/p>/);
+      return match ? match[1] : null;
+    }
+  </script>
+</body>
+</html>
