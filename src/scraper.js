@@ -14,7 +14,7 @@ function detectHebrew(text) {
 }
 
 async function scrapeSong(url) {
-  const response = await axios.get(url, { headers: HEADERS, timeout: 15000 });
+  const response = await axios.get(url, { headers: HEADERS, timeout: 30000 });
   const $ = cheerio.load(response.data);
 
   const title = extractTitle($);
