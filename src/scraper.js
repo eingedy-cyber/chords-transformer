@@ -67,8 +67,8 @@ function parseTab4uTable($, rows) {
   rows.each((_, tr) => {
     const td = $(tr).find('td').first();
     const cls = td.attr('class') || '';
-    if (cls === 'chords') {
-      rowData.push({ type: 'chords', chords: extractChordSpans($, td), rawText: td.text() });
+    if (cls === 'chords' || cls === 'chords_en') {
+      rowData.push({ type: 'chords', cls, chords: extractChordSpans($, td) });
     } else if (cls === 'song') {
       rowData.push({ type: 'song', text: td.text() });
     }
@@ -80,28 +80,44 @@ function parseTab4uTable($, rows) {
   for (let i = 0; i < rowData.length; i++) {
     const row = rowData[i];
 
-    if (row.type === 'chords') {
-      // Detect original key from the first chord (preserve minor suffix)
+    if (row.type === 'chords' && row.cls === 'chords') {
+      // Hebrew style: td.chords comes BEFORE its lyric row (td.song follows)
       if (!originalKey && row.chords.length > 0) {
         const m = row.chords[0].chord.match(/^([A-G][b#]?m?)/);
         if (m) originalKey = m[1];
       }
 
       if (i + 1 < rowData.length && rowData[i + 1].type === 'song') {
-        // Paired: these chords go above the following lyric
-        const songText = rowData[i + 1].text;
-        const line = buildChordLyricLine(row.chords, songText);
+        const line = buildChordLyricLine(row.chords, rowData[i + 1].text);
         if (line.length > 0) lines.push(line);
         i++; // consume the song row
       } else {
-        // Chord-only line (intro, interlude, etc.)
+        // Chord-only line
         const line = row.chords.map(c => ({ chord: c.chord, lyric: '' }));
         if (line.length > 0) lines.push(line);
       }
+
+    } else if (row.type === 'song') {
+      // English style: td.song comes BEFORE its chord row (td.chords_en follows)
+      // Hebrew style: td.song with no preceding chords → section label / lyric-only
+      if (i + 1 < rowData.length && rowData[i + 1].type === 'chords' && rowData[i + 1].cls === 'chords_en') {
+        const chordRow = rowData[i + 1];
+        if (!originalKey && chordRow.chords.length > 0) {
+          const m = chordRow.chords[0].chord.match(/^([A-G][b#]?m?)/);
+          if (m) originalKey = m[1];
+        }
+        const line = buildChordLyricLine(chordRow.chords, row.text);
+        if (line.length > 0) lines.push(line);
+        i++; // consume the chords_en row
+      } else {
+        const text = row.text.trim();
+        lines.push([{ chord: null, lyric: text }]);
+      }
+
     } else {
-      // song-only row (section label like "פזמון:", "פתיחה:", or lyric without chords)
-      const text = row.text.trim();
-      lines.push([{ chord: null, lyric: text }]);
+      // chords_en not preceded by a song row → chord-only line
+      const line = row.chords.map(c => ({ chord: c.chord, lyric: '' }));
+      if (line.length > 0) lines.push(line);
     }
   }
 
