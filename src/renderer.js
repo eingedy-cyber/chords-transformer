@@ -4,21 +4,7 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
   const dir = isRTL ? 'rtl' : 'ltr';
   const langAttr = isRTL ? 'he' : 'en';
 
-  const linesHtml = lines.map(line => {
-    if (line.length === 1 && !line[0].chord && !line[0].lyric.trim()) {
-      return '<div class="spacer"></div>';
-    }
-
-    const segmentsHtml = line.map(seg => {
-      const chordHtml = seg.chord
-        ? `<div class="chord">${escHtml(seg.chord)}</div>`
-        : `<div class="chord empty"></div>`;
-      const lyricHtml = `<div class="lyric">${escHtml(seg.lyric) || '&nbsp;'}</div>`;
-      return `<span class="segment">${chordHtml}${lyricHtml}</span>`;
-    }).join('');
-
-    return `<div class="line">${segmentsHtml}</div>`;
-  }).join('\n');
+  const linesHtml = lines.map(line => renderLine(line, isRTL)).join('\n');
 
   const keyInfo = originalKey
     ? `<span class="key-info">Original key: <strong>${escHtml(originalKey)}</strong> → Transposed to: <strong>${escHtml(targetKey)}</strong></span>`
@@ -69,14 +55,11 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
       font-family: sans-serif;
     }
 
-    .song-body {
-      line-height: 1;
-    }
+    .song-body { line-height: 1; }
 
-    .spacer {
-      height: 1.4em;
-    }
+    .spacer { height: 1.4em; }
 
+    /* ── LTR layout: flex segments ── */
     .line {
       display: flex;
       flex-wrap: wrap;
@@ -84,21 +67,11 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
       margin-bottom: 0.1em;
     }
 
-    /* RTL: flex-direction:row already flows right-to-left in a dir=rtl container.
-       No row-reverse needed — that would double-flip back to LTR. */
-
     .segment {
       display: inline-flex;
       flex-direction: column;
       align-items: flex-start;
       margin-right: 2px;
-    }
-
-    /* In RTL column-flex, flex-start = right (inline-start), which is correct:
-       chord aligns above the start (right edge) of the Hebrew lyric. */
-    [dir="rtl"] .segment {
-      margin-right: 0;
-      margin-left: 2px;
     }
 
     .chord {
@@ -110,14 +83,45 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
       line-height: 1.3;
     }
 
-    .chord.empty {
-      visibility: hidden;
-    }
+    .chord.empty { visibility: hidden; }
 
     .lyric {
       font-size: 1rem;
       white-space: pre;
       line-height: 1.6;
+    }
+
+    /* ── RTL layout: two pre-formatted rows ──
+       Both chord-row and lyric-row share dir="rtl" on the parent,
+       so string position 0 maps to the same visual position (far right)
+       in both rows — giving correct chord-above-lyric alignment. */
+    .rtl-line {
+      direction: rtl;
+      margin-bottom: 0.1em;
+      overflow-x: auto;
+    }
+
+    .chord-row {
+      white-space: pre;
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: #1a6fa8;
+      min-height: 1.4em;
+      line-height: 1.3;
+    }
+
+    .lyric-row {
+      white-space: pre;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    /* lyric-only line inside RTL song */
+    .rtl-lyric-only {
+      direction: rtl;
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 0.1em;
     }
 
     /* Print styles */
@@ -129,30 +133,26 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
         font-size: 12pt;
       }
 
-      header {
-        margin-bottom: 1cm;
-      }
-
+      header { margin-bottom: 1cm; }
       header h1 { font-size: 16pt; }
       header .artist { font-size: 12pt; }
       .key-info { font-size: 10pt; }
 
-      .chord { font-size: 11pt; }
-      .lyric { font-size: 10pt; }
+      .chord, .chord-row { font-size: 11pt; }
+      .lyric, .lyric-row { font-size: 10pt; }
 
       .spacer { height: 0.6cm; }
 
-      .line { page-break-inside: avoid; }
+      .line, .rtl-line { page-break-inside: avoid; }
 
-      /* Ensure good page breaks */
       .song-body { orphans: 3; widows: 3; }
     }
 
     @media (max-width: 600px) {
       body { padding: 1rem; }
       header h1 { font-size: 1.3rem; }
-      .chord { font-size: 1rem; }
-      .lyric { font-size: 0.9rem; }
+      .chord, .chord-row { font-size: 1rem; }
+      .lyric, .lyric-row { font-size: 0.9rem; }
     }
   </style>
 </head>
@@ -168,6 +168,67 @@ ${linesHtml}
   </main>
 </body>
 </html>`;
+}
+
+function renderLine(line, isRTL) {
+  // Empty / spacer line
+  if (line.length === 1 && !line[0].chord && !line[0].lyric.trim()) {
+    return '<div class="spacer"></div>';
+  }
+
+  const hasChords = line.some(s => s.chord);
+
+  if (isRTL) {
+    return renderRTLLine(line, hasChords);
+  }
+
+  // LTR: flex segment layout
+  const segmentsHtml = line.map(seg => {
+    const chordHtml = seg.chord
+      ? `<div class="chord">${escHtml(seg.chord)}</div>`
+      : `<div class="chord empty"></div>`;
+    const lyricHtml = `<div class="lyric">${escHtml(seg.lyric) || '&nbsp;'}</div>`;
+    return `<span class="segment">${chordHtml}${lyricHtml}</span>`;
+  }).join('');
+
+  return `<div class="line">${segmentsHtml}</div>`;
+}
+
+/**
+ * RTL two-row rendering.
+ *
+ * Build a chord string and a lyric string where each segment occupies
+ * the same number of characters in both strings (padded with spaces).
+ * With dir="rtl" on the parent, string position 0 = rightmost visual
+ * position in BOTH rows — so chords align above their lyrics.
+ */
+function renderRTLLine(line, hasChords) {
+  if (!hasChords) {
+    // Lyric-only line (section label, etc.)
+    const text = line.map(s => s.lyric).join('').trim();
+    return `<div class="rtl-lyric-only">${escHtml(text)}</div>`;
+  }
+
+  let chordStr = '';
+  let lyricStr = '';
+
+  for (const seg of line) {
+    const chord = seg.chord || '';
+    const lyric = seg.lyric || '';
+    // Each segment occupies max(chord.length, lyric.length) chars in both rows
+    const width = Math.max(chord.length, lyric.length);
+    chordStr += chord.padEnd(width);
+    lyricStr += lyric.padEnd(width);
+  }
+
+  // Trim trailing spaces (cosmetic)
+  chordStr = chordStr.trimEnd();
+  lyricStr = lyricStr.trimEnd();
+
+  return `<div class="rtl-line">
+  <div class="chord-row">${escHtml(chordStr)}</div>
+  <div class="lyric-row">${escHtml(lyricStr)}</div>
+</div>`;
 }
 
 function escHtml(str) {
