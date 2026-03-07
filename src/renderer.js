@@ -187,7 +187,9 @@ function renderLine(line, isRTL) {
     const chordHtml = seg.chord
       ? `<div class="chord">${escHtml(seg.chord)}</div>`
       : `<div class="chord empty"></div>`;
-    const lyricHtml = `<div class="lyric">${escHtml(seg.lyric) || '&nbsp;'}</div>`;
+    // For chord-only segments, add padding so chords don't run together
+    const lyricText = seg.lyric || (seg.chord ? '    ' : '');
+    const lyricHtml = `<div class="lyric">${escHtml(lyricText) || '&nbsp;'}</div>`;
     return `<span class="segment">${chordHtml}${lyricHtml}</span>`;
   }).join('');
 

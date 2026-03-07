@@ -100,7 +100,8 @@ function parseTab4uTable($, rows) {
     } else if (row.type === 'song') {
       // English style: td.song comes BEFORE its chord row (td.chords_en follows)
       // Hebrew style: td.song with no preceding chords → section label / lyric-only
-      if (i + 1 < rowData.length && rowData[i + 1].type === 'chords' && rowData[i + 1].cls === 'chords_en') {
+      const isSectionLabel = isSectionLabelText(row.text);
+      if (!isSectionLabel && i + 1 < rowData.length && rowData[i + 1].type === 'chords' && rowData[i + 1].cls === 'chords_en') {
         const chordRow = rowData[i + 1];
         if (!originalKey && chordRow.chords.length > 0) {
           const m = chordRow.chords[0].chord.match(/^([A-G][b#]?m?)/);
@@ -149,6 +150,15 @@ function extractChordSpans($, td) {
   });
 
   return chords;
+}
+
+/**
+ * Section labels like "Intro:", "Chorus:", "פזמון:", "פתיחה:" should not be
+ * paired with chord rows — they're headers, not singable lyrics.
+ */
+function isSectionLabelText(text) {
+  const t = text.trim();
+  return t.length < 25 && t.endsWith(':');
 }
 
 /**
