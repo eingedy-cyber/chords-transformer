@@ -187,7 +187,7 @@ function buildChordLyricLine(chords, songText) {
   const segments = [];
 
   // Any lyric text before the first chord position
-  const prefix = songText.slice(0, chords[0].pos).trim();
+  const prefix = songText.slice(0, chords[0].pos).trimStart();
   if (prefix) {
     segments.push({ chord: null, lyric: prefix });
   }
