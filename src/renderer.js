@@ -215,8 +215,9 @@ function renderRTLLine(line, hasChords) {
   for (const seg of line) {
     const chord = seg.chord || '';
     const lyric = seg.lyric || '';
-    // Each segment occupies max(chord.length, lyric.length) chars in both rows
-    const width = Math.max(chord.length, lyric.length);
+    // When no lyric, add 2 spaces after the chord so chords don't run together
+    const minWidth = lyric.trim().length === 0 ? chord.length + 2 : chord.length;
+    const width = Math.max(minWidth, lyric.length);
     chordStr += chord.padEnd(width);
     lyricStr += lyric.padEnd(width);
   }
