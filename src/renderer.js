@@ -41,6 +41,7 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
   <title>${escHtml(title || 'Song')} — ${escHtml(targetKey)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-x: hidden; }
 
     body {
       font-family: 'Courier New', Courier, monospace;
@@ -78,7 +79,7 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
       font-family: sans-serif;
     }
 
-    .song-body { line-height: 1; }
+    .song-body { line-height: 1; overflow-x: auto; }
 
     .spacer { height: 1.4em; }
 
