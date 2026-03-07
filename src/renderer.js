@@ -216,7 +216,7 @@ function renderRTLLine(line, hasChords) {
     const chord = seg.chord || '';
     const lyric = seg.lyric || '';
     // When no lyric, add 2 spaces after the chord so chords don't run together
-    const minWidth = lyric.trim().length === 0 ? chord.length + 2 : chord.length;
+    const minWidth = lyric.trim().length === 0 ? chord.length + 4 : chord.length;
     const width = Math.max(minWidth, lyric.length);
     chordStr += chord.padEnd(width);
     lyricStr += lyric.padEnd(width);
