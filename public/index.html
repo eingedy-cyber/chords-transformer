@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chords Transformer</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -155,11 +157,31 @@
     }
 
     .share-link a { color: #1a6fa8; }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .app-icon {
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .app-header h1 { margin-bottom: 0; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Chords Transformer</h1>
+    <div class="app-header">
+      <img src="/icon.svg" alt="Chords Transformer" class="app-icon">
+      <h1>Chords Transformer</h1>
+    </div>
     <p class="subtitle">Transpose any tab4u.com song to your preferred key</p>
 
     <!-- Step 1: URL input -->
