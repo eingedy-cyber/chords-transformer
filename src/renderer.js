@@ -5,27 +5,27 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
   const langAttr = isRTL ? 'he' : 'en';
 
   const linesHtml = lines.map((line, i) => {
-    if (line.isTabBlock) return renderTabBlock(line);
-
     const isEmptyLine = line.length === 1 && !line[0].chord && !line[0].lyric.trim();
     const hasLyric = !isEmptyLine && line.some(s => s.lyric && s.lyric.trim());
     const isSectionLabel = line.length === 1 && !line[0].chord && isSectionLabelText(line[0].lyric);
     const prevLine = i > 0 ? lines[i - 1] : null;
-    const prevIsTabBlock = prevLine && prevLine.isTabBlock;
-    const prevIsEmpty = !prevIsTabBlock && prevLine && prevLine.length === 1 && !prevLine[0].chord && !prevLine[0].lyric.trim();
-    const prevIsSectionLabel = !prevIsTabBlock && prevLine && prevLine.length === 1 && !prevLine[0].chord && isSectionLabelText(prevLine[0].lyric);
+    const prevIsEmpty = prevLine && prevLine.length === 1 && !prevLine[0].chord && !prevLine[0].lyric.trim();
+    const prevIsSectionLabel = prevLine && prevLine.length === 1 && !prevLine[0].chord && isSectionLabelText(prevLine[0].lyric);
 
+    // Add spacer before section labels (but not at the very start)
     if (isSectionLabel) {
       const spacer = (prevLine && !prevIsEmpty) ? '<div class="spacer"></div>\n' : '';
       return spacer + renderLine(line, isRTL);
     }
 
+    // Suppress spacer immediately after a section label
     if (prevIsSectionLabel) {
       return renderLine(line, isRTL);
     }
 
-    const prevHasLyric = !prevIsTabBlock && prevLine && !prevIsEmpty && prevLine.some(s => s.lyric && s.lyric.trim());
-    const needsSpacer = prevLine && !prevIsEmpty && !prevIsTabBlock && !isEmptyLine && hasLyric !== prevHasLyric;
+    // Insert an extra spacer when transitioning between lyric and chord-only sections
+    const prevHasLyric = prevLine && !prevIsEmpty && prevLine.some(s => s.lyric && s.lyric.trim());
+    const needsSpacer = prevLine && !prevIsEmpty && !isEmptyLine && hasLyric !== prevHasLyric;
     return (needsSpacer ? '<div class="spacer"></div>\n' : '') + renderLine(line, isRTL);
   }).join('\n');
 
@@ -57,8 +57,16 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
       padding-bottom: 1rem;
     }
 
-    header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
-    header .artist { font-size: 1.1rem; color: #555; margin-bottom: 0.5rem; }
+    header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.3rem;
+    }
+
+    header .artist {
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
 
     .key-info {
       display: inline-block;
@@ -74,129 +82,101 @@ function renderSong({ title, artist, originalKey, targetKey, isRTL, lines }) {
 
     .spacer { height: 1.4em; }
 
-    /* ── LTR chord+lyric lines ── pre-formatted two-row approach */
-    .ltr-line {
-      margin-bottom: 0.15em;
+    /* ── LTR layout: flex segments ── */
+    .line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 0.1em;
+    }
+
+    .segment {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-right: 2px;
+    }
+
+    .chord {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: #1a6fa8;
+      min-height: 1.4em;
+      white-space: nowrap;
+      line-height: 1.3;
+    }
+
+    .chord.empty { visibility: hidden; }
+
+    .lyric {
+      font-size: 1rem;
+      white-space: pre;
+      line-height: 1.6;
+    }
+
+    /* ── RTL layout: two pre-formatted rows ──
+       Both chord-row and lyric-row share dir="rtl" on the parent,
+       so string position 0 maps to the same visual position (far right)
+       in both rows — giving correct chord-above-lyric alignment. */
+    .rtl-line {
+      direction: rtl;
+      margin-bottom: 0.1em;
       overflow-x: auto;
     }
 
     .chord-row {
-      display: block;
-      font-size: 1rem;
-      font-weight: bold;
-      min-height: 1.6em;
-      line-height: 1.4;
       white-space: pre;
-      margin-bottom: 2px;
-    }
-
-    .chord-badge {
-      display: inline;
-      border-radius: 4px;
-      padding: 0px 3px;
-      margin: 0px -3px;
-      color: #2566F1;
-      background: #DFE8FE;
+      font-size: 1.15rem;
       font-weight: bold;
+      color: #1a6fa8;
+      min-height: 1.4em;
+      line-height: 1.3;
     }
 
     .lyric-row {
-      display: block;
-      font-size: 1rem;
-      line-height: 1.6;
-      white-space: pre;
-    }
-
-    /* ── RTL chord+lyric lines ──
-       The lyric row renders Hebrew text normally with direction:rtl.
-       The chord row uses position:relative so each chord badge can be
-       placed with position:absolute; right:Xch matching the cumulative
-       lyric character offset — segment[0] is at the visual right edge. */
-    .rtl-line {
-      direction: rtl;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      margin-bottom: 0.15em;
-    }
-
-    .rtl-chord-row {
-      position: relative;
-      min-height: 1.6em;
-      font-size: 1rem;
-      font-weight: bold;
-      line-height: 1.4;
-      margin-bottom: 2px;
-    }
-
-    .rtl-chord-row .chord-badge {
-      position: absolute;
-      top: 0;
-    }
-
-    .rtl-lyric-row {
       white-space: pre;
       font-size: 1rem;
       line-height: 1.6;
     }
 
-    .ltr-lyric-only {
-      white-space: pre;
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 0.15em;
-    }
-
+    /* lyric-only line inside RTL song */
     .rtl-lyric-only {
       direction: rtl;
       font-size: 1rem;
       line-height: 1.6;
-      margin-bottom: 0.15em;
+      margin-bottom: 0.1em;
     }
 
-    /* ── Tab blocks ── always LTR regardless of song direction */
-    .tab-block {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 0.92rem;
-      margin-bottom: 1em;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      direction: ltr;
-      text-align: left;
-    }
-
-    .tab-chord-row {
-      white-space: pre;
-      font-size: 1rem;
-      font-weight: bold;
-      min-height: 1.6em;
-      line-height: 1.4;
-    }
-
-    .tab-string {
-      white-space: pre;
-      color: #333;
-      line-height: 1.5;
-    }
-
+    /* Print styles */
     @media print {
-      body { background: white; padding: 1cm; max-width: 100%; font-size: 12pt; }
+      body {
+        background: white;
+        padding: 1cm;
+        max-width: 100%;
+        font-size: 12pt;
+      }
+
       header { margin-bottom: 1cm; }
       header h1 { font-size: 16pt; }
       header .artist { font-size: 12pt; }
       .key-info { font-size: 10pt; }
-      .chord-row, .rtl-chord-row, .tab-chord-row { font-size: 9pt; }
-      .lyric-row, .rtl-lyric-row, .ltr-lyric-only, .rtl-lyric-only { font-size: 10pt; }
+
+      .chord, .chord-row { font-size: 11pt; }
+      .lyric, .lyric-row { font-size: 10pt; }
+
       .spacer { height: 0.6cm; }
-      .ltr-line, .rtl-line { page-break-inside: avoid; }
+
+      .line, .rtl-line { page-break-inside: avoid; }
+
       .song-body { orphans: 3; widows: 3; }
     }
 
     @media (max-width: 600px) {
       body { padding: 0.75rem; }
       header h1 { font-size: 1.3rem; }
-      .chord-row, .rtl-chord-row, .tab-chord-row { font-size: 0.8rem; }
-      .lyric-row, .rtl-lyric-row, .ltr-lyric-only, .rtl-lyric-only { font-size: 0.75rem; }
-      .ltr-line, .rtl-line { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .chord, .chord-row { font-size: 0.8rem; }
+      .lyric, .lyric-row { font-size: 0.75rem; }
+      .rtl-line { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     }
   </style>
 </head>
@@ -220,111 +200,68 @@ function isSectionLabelText(text) {
   return t.length < 25 && t.endsWith(':');
 }
 
-/**
- * Normalize all strings in a tab block to the same length by inserting
- * dashes before the trailing | (or appending dashes if no trailing |).
- * Transposing can change individual string lengths when fret digit counts
- * change (e.g. 9→10), so we re-equalize here.
- */
-function normalizeTabStrings(strings) {
-  if (strings.length === 0) return strings;
-  const maxLen = Math.max(...strings.map(s => s.length));
-  return strings.map(s => {
-    const needed = maxLen - s.length;
-    if (needed <= 0) return s;
-    if (s.endsWith('|')) {
-      return s.slice(0, -1) + '-'.repeat(needed) + '|';
-    }
-    return s + '-'.repeat(needed);
-  });
-}
-
-function renderTabBlock(block) {
-  let html = '<div class="tab-block">';
-
-  if (block.chordsAbove.length > 0) {
-    // Build a character-grid string with chords at their scraped positions,
-    // then wrap each chord token in a badge span.
-    const tabWidth = block.strings.length > 0 ? block.strings[0].length : 50;
-    const arr = new Array(Math.max(tabWidth + 10, 60)).fill(' ');
-    for (const { chord, pos } of block.chordsAbove) {
-      for (let j = 0; j < chord.length && pos + j < arr.length; j++) {
-        arr[pos + j] = chord[j];
-      }
-    }
-    html += `<div class="tab-chord-row">${badgeHtml(arr.join('').trimEnd())}</div>`;
-  }
-
-  const strings = normalizeTabStrings(block.strings);
-  for (const str of strings) {
-    html += `<div class="tab-string">${escHtml(str)}</div>`;
-  }
-
-  html += '</div>';
-  return html;
-}
-
 function renderLine(line, isRTL) {
+  // Empty / spacer line
   if (line.length === 1 && !line[0].chord && !line[0].lyric.trim()) {
     return '<div class="spacer"></div>';
   }
 
   const hasChords = line.some(s => s.chord);
 
-  if (!hasChords) {
-    const text = line.map(s => s.lyric).join('');
-    const cls = isRTL ? 'rtl-lyric-only' : 'ltr-lyric-only';
-    return `<div class="${cls}">${escHtml(text)}</div>`;
-  }
-
   if (isRTL) {
-    // RTL songs: lyric row uses direction:rtl (natural Hebrew flow).
-    // Chord badges are positioned absolutely at `right:Xch` where X is the
-    // cumulative lyric character offset — segment[0] (offset 0) lands at
-    // the visual right edge, matching the first Hebrew character.
-    let lyricStr = '';
-    const badges = [];
-    let cumPos = 0;
-    for (const seg of line) {
-      const chord = seg.chord || '';
-      const lyric = seg.lyric || '';
-      const width = !lyric.trim() && chord
-        ? Math.max(chord.length + 2, lyric.length)
-        : Math.max(chord.length, lyric.length);
-      if (chord) {
-        badges.push(`<span class="chord-badge" style="position:absolute;right:${cumPos}ch;top:0">${escHtml(chord)}</span>`);
-      }
-      lyricStr += lyric.padEnd(width);
-      cumPos += width;
-    }
-    const chordRow = `<div class="rtl-chord-row" style="width:${cumPos}ch">${badges.join('')}</div>`;
-    return `<div class="rtl-line">${chordRow}<div class="rtl-lyric-row">${escHtml(lyricStr)}</div></div>`;
+    return renderRTLLine(line, hasChords);
   }
 
-  // LTR songs: pre-formatted two-row approach.
+  // LTR: flex segment layout
+  const segmentsHtml = line.map(seg => {
+    const chordHtml = seg.chord
+      ? `<div class="chord">${escHtml(seg.chord)}</div>`
+      : `<div class="chord empty"></div>`;
+    // For chord-only segments, add padding so chords don't run together
+    const lyricText = seg.lyric || (seg.chord ? '    ' : '');
+    const lyricHtml = `<div class="lyric">${escHtml(lyricText) || '&nbsp;'}</div>`;
+    return `<span class="segment">${chordHtml}${lyricHtml}</span>`;
+  }).join('');
+
+  return `<div class="line">${segmentsHtml}</div>`;
+}
+
+/**
+ * RTL two-row rendering.
+ *
+ * Build a chord string and a lyric string where each segment occupies
+ * the same number of characters in both strings (padded with spaces).
+ * With dir="rtl" on the parent, string position 0 = rightmost visual
+ * position in BOTH rows — so chords align above their lyrics.
+ */
+function renderRTLLine(line, hasChords) {
+  if (!hasChords) {
+    // Lyric-only line (section label, etc.)
+    const text = line.map(s => s.lyric).join('').trim();
+    return `<div class="rtl-lyric-only">${escHtml(text)}</div>`;
+  }
+
   let chordStr = '';
   let lyricStr = '';
+
   for (const seg of line) {
     const chord = seg.chord || '';
     const lyric = seg.lyric || '';
-    // Chord-only segments get extra padding so adjacent chords stay separated.
-    const width = !lyric.trim() && chord
-      ? Math.max(chord.length + 2, lyric.length)
-      : Math.max(chord.length, lyric.length);
+    // When no lyric, add 2 spaces after the chord so chords don't run together
+    const minWidth = lyric.trim().length === 0 ? chord.length + 4 : chord.length;
+    const width = Math.max(minWidth, lyric.length);
     chordStr += chord.padEnd(width);
     lyricStr += lyric.padEnd(width);
   }
 
-  return `<div class="ltr-line"><div class="chord-row">${badgeHtml(chordStr)}</div><div class="lyric-row">${escHtml(lyricStr)}</div></div>`;
-}
+  // Trim trailing spaces (cosmetic)
+  chordStr = chordStr.trimEnd();
+  lyricStr = lyricStr.trimEnd();
 
-/**
- * Wrap each non-space run in the pre-formatted chord string with a badge
- * span. Uses display:inline so character widths are not affected and the
- * white-space:pre grid stays intact.
- */
-function badgeHtml(chordStr) {
-  return chordStr.replace(/([^ ]+)/g, m => `<span class="chord-badge">${escHtml(m)}</span>`);
+  return `<div class="rtl-line">
+  <div class="chord-row">${escHtml(chordStr)}</div>
+  <div class="lyric-row">${escHtml(lyricStr)}</div>
+</div>`;
 }
 
 function escHtml(str) {
